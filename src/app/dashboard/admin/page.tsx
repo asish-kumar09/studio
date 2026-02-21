@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -5,11 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from "recharts"
-import { ShieldAlert, Users, Calendar, CheckCircle, XCircle, Loader2 } from "lucide-react"
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase"
+import { ShieldAlert, Users, Calendar, CheckCircle, XCircle, Loader2, AlertTriangle } from "lucide-react"
+import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase"
 import { collection, query, orderBy, doc } from "firebase/firestore"
 import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 import { toast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 const activityData = [
   { name: "Mon", queries: 40 },
@@ -33,7 +35,15 @@ type LeaveRequest = {
 };
 
 export default function AdminDashboardPage() {
+  const { user } = useUser();
   const db = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(db, 'userProfiles', user.uid);
+  }, [db, user]);
+
+  const { data: profile, isLoading: isProfileLoading } = useDoc(userProfileRef);
   
   const leavesQuery = useMemoFirebase(() => {
     return query(collection(db, 'leaveApplications'), orderBy('applicationDate', 'desc'));
@@ -51,10 +61,37 @@ export default function AdminDashboardPage() {
     });
   };
 
+  if (isProfileLoading) {
+    return (
+      <div className="flex items-center justify-center h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (profile?.role !== 'admin') {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
+        <div className="bg-destructive/10 p-6 rounded-full">
+          <AlertTriangle className="h-12 w-12 text-destructive" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold font-headline">Access Denied</h2>
+          <p className="text-muted-foreground max-w-md">
+            You do not have the necessary permissions to access the Admin Portal. This area is restricted to system administrators only.
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/dashboard">Return to Dashboard</Link>
+        </Button>
+      </div>
+    );
+  }
+
   const pendingCount = leaves?.filter(l => l.status === 'pending')?.length || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold font-headline text-primary flex items-center gap-2">

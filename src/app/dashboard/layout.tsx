@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return doc(db, 'userProfiles', user.uid);
   }, [db, user]);
 
-  const { data: profile } = useDoc(userProfileRef);
+  const { data: profile, isLoading: isProfileLoading } = useDoc(userProfileRef);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -50,7 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </SidebarHeader>
           <SidebarContent>
-            <DashboardNav />
+            <DashboardNav role={profile?.role} />
           </SidebarContent>
         </Sidebar>
         <SidebarInset className="flex flex-col">
@@ -65,11 +65,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <p className="text-sm font-medium leading-none">
                     {profile ? `${profile.firstName} ${profile.lastName}` : user.email}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    {profile?.role === 'admin' ? 'Administrator' : 'Student'}
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">
+                    {profile?.role || '...'}
                   </p>
                 </div>
-                <Avatar>
+                <Avatar className="border-2 border-primary/10">
                   <AvatarImage src={`https://picsum.photos/seed/${user.uid}/150/150`} />
                   <AvatarFallback>{profile?.firstName?.[0] || 'U'}</AvatarFallback>
                 </Avatar>

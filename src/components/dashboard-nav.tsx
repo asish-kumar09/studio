@@ -16,7 +16,14 @@ import {
 import { useAuth } from "@/firebase"
 import { signOut } from "firebase/auth"
 
-const navItems = [
+interface NavItem {
+  title: string;
+  href: string;
+  icon: any;
+  adminOnly?: boolean;
+}
+
+const navItems: NavItem[] = [
   {
     title: "Dashboard",
     href: "/dashboard",
@@ -41,10 +48,11 @@ const navItems = [
     title: "Admin Panel",
     href: "/dashboard/admin",
     icon: ShieldAlert,
+    adminOnly: true,
   },
 ]
 
-export function DashboardNav() {
+export function DashboardNav({ role }: { role?: string }) {
   const pathname = usePathname()
   const auth = useAuth()
   const router = useRouter()
@@ -54,9 +62,11 @@ export function DashboardNav() {
     router.push('/login');
   }
 
+  const filteredItems = navItems.filter(item => !item.adminOnly || role === 'admin');
+
   return (
     <nav className="flex flex-col gap-2 p-4 h-full">
-      {navItems.map((item) => {
+      {filteredItems.map((item) => {
         const Icon = item.icon
         return (
           <Link
