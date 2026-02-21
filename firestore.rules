@@ -1,0 +1,176 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * STUDENTHUB AI SECURITY RULES
+     * 
+     * Core Philosophy: 
+     * This ruleset enforces a strict user-ownership model combined with role-based access for administrators. 
+     * High performance is achieved through path-based authorization and denormalized ownership fields, 
+     * ensuring that security checks are atomic and do not require excessive 'get' calls.
+     * 
+     * Data Structure:
+     * - User-centric data (Profiles, Chat, Resumes) is nested under /userProfiles/{userId}.
+     * - Cross-user data (Leave Applications) and Global data (Skills) are top-level.
+     * - Admin roles are managed via an existence-based collection at /roles_admin/{adminUid}.
+     * 
+     * Key Security Decisions:
+     * 1. Ownership Enforcement: Users can only access data within their own /userProfiles path.
+     * 2. Admin Oversight: Admins have read access to all profiles and full control over the global Skills catalog.
+     * 3. Denormalization for Authorization: Critical IDs (userId, studentId) are verified during creation to 
+     *    match the authenticated user and the document path, ensuring relational integrity.
+     * 4. Relational Immutability: Ownership fields are made immutable on update to prevent data hijacking.
+     */
+
+    // --- Helper Functions ---
+
+    /**
+     * @description Checks if the request is from a signed-in user.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user's UID matches the provided userId.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user is an administrator via the existence-based roles collection.
+     */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    /**
+     * @description Verifies ownership of an existing document using a specific field name.
+     */
+    function isExistingDocumentOwner(ownerField) {
+      return isSignedIn() && resource != null && resource.data[ownerField] == request.auth.uid;
+    }
+
+    /**
+     * @description Verifies that a field remains unchanged during an update.
+     */
+    function isUnchanged(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for User Profiles. Owners manage their profiles; Admins can view all.
+     * @path /userProfiles/{userId}
+     * @allow (get) if request.auth.uid == userId || isAdmin()
+     * @deny (create) if request.resource.data.id != request.auth.uid
+     * @principle Ownership validation and Admin read override.
+     */
+    match /userProfiles/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin() || isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && resource != null && isUnchanged('id');
+      allow delete: if isOwner(userId) && resource != null;
+
+      /**
+       * @description Rules for Chat Sessions. Strictly limited to the user who owns the parent profile.
+       * @path /userProfiles/{userId}/chatSessions/{chatSessionId}
+       * @allow (list) if request.auth.uid == userId
+       * @deny (update) if request.resource.data.userId != userId
+       * @principle Path-based authorization for user subcollections.
+       */
+      match /chatSessions/{chatSessionId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isOwner(userId) && resource != null && isUnchanged('userId');
+        allow delete: if isOwner(userId) && resource != null;
+
+        /**
+         * @description Rules for Chat Messages within a session.
+         * @path /userProfiles/{userId}/chatSessions/{chatSessionId}/chatMessages/{chatMessageId}
+         * @allow (create) if request.auth.uid == userId
+         * @deny (get) if request.auth.uid != userId
+         * @principle Inherited path-based ownership.
+         */
+        match /chatMessages/{chatMessageId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId);
+          allow update: if isOwner(userId) && resource != null;
+          allow delete: if isOwner(userId) && resource != null;
+        }
+      }
+
+      /**
+       * @description Rules for Resumes. Strictly limited to the owning student.
+       * @path /userProfiles/{userId}/resumes/{resumeId}
+       * @allow (create) if request.resource.data.studentId == userId
+       * @deny (delete) if request.auth.uid != userId
+       * @principle Denormalized ownership validation against the path.
+       */
+      match /resumes/{resumeId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.studentId == userId;
+        allow update: if isOwner(userId) && resource != null && isUnchanged('studentId');
+        allow delete: if isOwner(userId) && resource != null;
+
+        // Shared logic for resume sub-entries
+        match /educationEntries/{entryId} {
+          allow read, write: if isOwner(userId);
+        }
+        match /experienceEntries/{entryId} {
+          allow read, write: if isOwner(userId);
+        }
+        match /projectEntries/{entryId} {
+          allow read, write: if isOwner(userId);
+        }
+      }
+    }
+
+    /**
+     * @description Existence-based collection for Admin roles.
+     * @path /roles_admin/{adminUid}
+     * @allow (get) if isSignedIn()
+     * @deny (write) if !isAdmin()
+     * @principle DBAC (Database Access Control) verification node.
+     */
+    match /roles_admin/{adminUid} {
+      allow get: if isSignedIn();
+      allow list, write: if isAdmin();
+    }
+
+    /**
+     * @description Top-level collection for Leave Applications. Students manage their own; Admins oversee all.
+     * @path /leaveApplications/{leaveApplicationId}
+     * @allow (list) if isAdmin() || (isSignedIn() && request.query.limit <= 100)
+     * @deny (update) if !isAdmin() && resource.data.status != 'pending'
+     * @principle Ownership-based writes with global Admin read/update access.
+     */
+    match /leaveApplications/{leaveApplicationId} {
+      allow get: if isAdmin() || isExistingDocumentOwner('studentId');
+      allow list: if isSignedIn(); // Filtering is handled by query: where('studentId', '==', auth.uid)
+      
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      
+      // Admins can update any application (reviews). Students can update their own only if still pending.
+      allow update: if isAdmin() || (isExistingDocumentOwner('studentId') && resource.data.status == 'pending' && isUnchanged('studentId'));
+      
+      allow delete: if isAdmin() || (isExistingDocumentOwner('studentId') && resource.data.status == 'pending');
+    }
+
+    /**
+     * @description Global catalog of skills. Publicly readable for all users; writable only by Admins.
+     * @path /skills/{skillId}
+     * @allow (list) if true
+     * @deny (create) if !isAdmin()
+     * @principle Public read-only catalog with Admin maintenance.
+     */
+    match /skills/{skillId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}

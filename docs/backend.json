@@ -1,0 +1,617 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user of the StudentHub AI system, either a student or an administrator. This entity stores general user information, excluding sensitive authentication data which is handled by an external system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user, used for communication.",
+          "format": "email"
+        },
+        "dateJoined": {
+          "type": "string",
+          "description": "The date and time when the user's profile was created.",
+          "format": "date-time"
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user within the system (e.g., 'student', 'admin')."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "dateJoined",
+        "role"
+      ]
+    },
+    "ChatSession": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatSession",
+      "type": "object",
+      "description": "Represents a single conversation session between a user and the AI chatbot.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ChatSession entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who initiated this chat session. (Relationship: UserProfile 1:N ChatSession)"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "The date and time when the chat session started.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "The date and time when the chat session ended. (Optional)",
+          "format": "date-time"
+        },
+        "title": {
+          "type": "string",
+          "description": "An optional title or summary for the chat session."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "startTime"
+      ]
+    },
+    "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatMessage",
+      "type": "object",
+      "description": "Represents an individual message within a ChatSession, exchanged between the user and the chatbot.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ChatMessage entity."
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Reference to the ChatSession this message belongs to. (Relationship: ChatSession 1:N ChatMessage)"
+        },
+        "senderType": {
+          "type": "string",
+          "description": "Indicates who sent the message (e.g., 'user', 'chatbot')."
+        },
+        "content": {
+          "type": "string",
+          "description": "The actual text content of the message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time when the message was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "senderType",
+        "content",
+        "timestamp"
+      ]
+    },
+    "LeaveApplication": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LeaveApplication",
+      "type": "object",
+      "description": "Represents a student's application for leave from academic or other responsibilities.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the LeaveApplication entity."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Reference to the UserProfile (student) who submitted this leave application. (Relationship: UserProfile 1:N LeaveApplication)"
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The start date of the requested leave.",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The end date of the requested leave.",
+          "format": "date"
+        },
+        "reason": {
+          "type": "string",
+          "description": "The reason provided by the student for requesting leave."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the leave application (e.g., 'pending', 'approved', 'rejected')."
+        },
+        "applicationDate": {
+          "type": "string",
+          "description": "The date and time when the leave application was submitted.",
+          "format": "date-time"
+        },
+        "reviewedByAdminId": {
+          "type": "string",
+          "description": "Reference to the UserProfile (admin) who reviewed this application, if applicable. (Relationship: UserProfile 1:N LeaveApplication for reviewer)"
+        },
+        "reviewDate": {
+          "type": "string",
+          "description": "The date and time when the application was reviewed. (Optional)",
+          "format": "date-time"
+        },
+        "adminComments": {
+          "type": "string",
+          "description": "Comments provided by the administrator during the review process. (Optional)"
+        }
+      },
+      "required": [
+        "id",
+        "studentId",
+        "startDate",
+        "endDate",
+        "reason",
+        "status",
+        "applicationDate"
+      ]
+    },
+    "Resume": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Resume",
+      "type": "object",
+      "description": "Represents a professional resume created by a student using the resume builder tool. A student can have multiple resumes.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Resume entity."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Reference to the UserProfile (student) who owns this resume. (Relationship: UserProfile 1:N Resume)"
+        },
+        "title": {
+          "type": "string",
+          "description": "A descriptive title for the resume (e.g., 'Software Engineer Resume', 'Marketing Resume')."
+        },
+        "creationDate": {
+          "type": "string",
+          "description": "The date and time when the resume was initially created.",
+          "format": "date-time"
+        },
+        "lastUpdatedDate": {
+          "type": "string",
+          "description": "The date and time when the resume was last modified.",
+          "format": "date-time"
+        },
+        "templateUsed": {
+          "type": "string",
+          "description": "The identifier or name of the template used for this resume. (Optional)"
+        },
+        "objectiveOrSummary": {
+          "type": "string",
+          "description": "A brief professional objective or summary statement for the resume. (Optional)"
+        },
+        "skillIds": {
+          "type": "array",
+          "description": "References to Skill entities included in this resume. (Relationship: Resume N:N Skill)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "studentId",
+        "title",
+        "creationDate",
+        "lastUpdatedDate"
+      ]
+    },
+    "EducationEntry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EducationEntry",
+      "type": "object",
+      "description": "Represents a single educational qualification entry within a student's resume.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the EducationEntry entity."
+        },
+        "resumeId": {
+          "type": "string",
+          "description": "Reference to the Resume this education entry belongs to. (Relationship: Resume 1:N EducationEntry)"
+        },
+        "institutionName": {
+          "type": "string",
+          "description": "The name of the educational institution."
+        },
+        "degree": {
+          "type": "string",
+          "description": "The degree or qualification obtained (e.g., 'B.Sc. in Computer Science')."
+        },
+        "major": {
+          "type": "string",
+          "description": "The specific major or field of study. (Optional)"
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The start date of the education period.",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The end date of the education period, or 'present' if currently enrolled. (Optional)",
+          "format": "date"
+        },
+        "gpa": {
+          "type": "number",
+          "description": "The Grade Point Average (GPA) achieved, if applicable. (Optional)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Additional details such as coursework, honors, or achievements. (Optional)"
+        }
+      },
+      "required": [
+        "id",
+        "resumeId",
+        "institutionName",
+        "degree",
+        "startDate"
+      ]
+    },
+    "ExperienceEntry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ExperienceEntry",
+      "type": "object",
+      "description": "Represents a single work, internship, or volunteer experience entry within a student's resume.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ExperienceEntry entity."
+        },
+        "resumeId": {
+          "type": "string",
+          "description": "Reference to the Resume this experience entry belongs to. (Relationship: Resume 1:N ExperienceEntry)"
+        },
+        "title": {
+          "type": "string",
+          "description": "The job title or role (e.g., 'Software Engineer Intern')."
+        },
+        "companyName": {
+          "type": "string",
+          "description": "The name of the company or organization."
+        },
+        "location": {
+          "type": "string",
+          "description": "The location of the company or work. (Optional)"
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The start date of the experience.",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The end date of the experience, or 'present' if currently employed. (Optional)",
+          "format": "date"
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of responsibilities and achievements, typically in bullet points."
+        }
+      },
+      "required": [
+        "id",
+        "resumeId",
+        "title",
+        "companyName",
+        "startDate",
+        "description"
+      ]
+    },
+    "ProjectEntry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ProjectEntry",
+      "type": "object",
+      "description": "Represents a project entry (e.g., personal project, coursework project) within a student's resume.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ProjectEntry entity."
+        },
+        "resumeId": {
+          "type": "string",
+          "description": "Reference to the Resume this project entry belongs to. (Relationship: Resume 1:N ProjectEntry)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the project."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the project, including its purpose, technologies, and outcomes."
+        },
+        "technologiesUsed": {
+          "type": "array",
+          "description": "A list of technologies, languages, or frameworks used in the project.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "projectUrl": {
+          "type": "string",
+          "description": "A URL to the live project or a demo. (Optional)",
+          "format": "uri"
+        },
+        "githubUrl": {
+          "type": "string",
+          "description": "A URL to the project's GitHub repository. (Optional)",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "resumeId",
+        "name",
+        "description",
+        "technologiesUsed"
+      ]
+    },
+    "Skill": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Skill",
+      "type": "object",
+      "description": "Represents a specific skill that can be added to a student's resume. Skills are often reused across multiple resumes.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Skill entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the skill (e.g., 'Python', 'React', 'Project Management')."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category the skill belongs to (e.g., 'Programming Languages', 'Frameworks', 'Soft Skills')."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "category"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/userProfiles/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores individual user profiles. The userId parameter maps directly to the authenticated user's UID. Access is restricted to the owner for read/write, and to administrators for read/specific updates (e.g., role modification).",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, corresponding to Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{adminUid}",
+        "definition": {
+          "entityName": "AdminRole",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "An existence-based collection used to grant and verify 'admin' roles. If a document exists at this path, the user associated with 'adminUid' is an administrator. Used for DBAC (Database Access Control) without reading the UserProfile document directly, supporting authorization independence.",
+          "params": [
+            {
+              "name": "adminUid",
+              "description": "The unique identifier of an administrator, corresponding to Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/chatSessions/{chatSessionId}",
+        "definition": {
+          "entityName": "ChatSession",
+          "schema": {
+            "$ref": "#/backend/entities/ChatSession"
+          },
+          "description": "Stores individual chat sessions belonging to a specific user. The userId from the path is denormalized into the document as 'userId' to ensure authorization independence. Access is strictly limited to the owning user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who owns this chat session."
+            },
+            {
+              "name": "chatSessionId",
+              "description": "The unique identifier for the chat session."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/chatSessions/{chatSessionId}/chatMessages/{chatMessageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Stores individual messages within a specific chat session. The owning userId is implicitly determined by the parent path and should also be denormalized (e.g., as 'sessionOwnerId' or inferred from 'sessionId' combined with path 'userId') for explicit authorization context within the document. Access is strictly limited to the owning user of the chat session.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who owns the parent chat session."
+            },
+            {
+              "name": "chatSessionId",
+              "description": "The unique identifier for the parent chat session."
+            },
+            {
+              "name": "chatMessageId",
+              "description": "The unique identifier for the chat message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/leaveApplications/{leaveApplicationId}",
+        "definition": {
+          "entityName": "LeaveApplication",
+          "schema": {
+            "$ref": "#/backend/entities/LeaveApplication"
+          },
+          "description": "Stores all student leave applications. For authorization independence and efficient querying, each document includes the 'studentId' (the owner). Students can manage their own applications (if status is 'pending'). Administrators can read and update all applications. This top-level collection allows for QAP-compliant list queries by administrators.",
+          "params": [
+            {
+              "name": "leaveApplicationId",
+              "description": "The unique identifier for the leave application."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/resumes/{resumeId}",
+        "definition": {
+          "entityName": "Resume",
+          "schema": {
+            "$ref": "#/backend/entities/Resume"
+          },
+          "description": "Stores professional resumes created by a student. The userId from the path is denormalized into the document as 'studentId' to ensure authorization independence. Access is strictly limited to the owning student.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the student who owns this resume."
+            },
+            {
+              "name": "resumeId",
+              "description": "The unique identifier for the resume."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/resumes/{resumeId}/educationEntries/{educationEntryId}",
+        "definition": {
+          "entityName": "EducationEntry",
+          "schema": {
+            "$ref": "#/backend/entities/EducationEntry"
+          },
+          "description": "Stores educational qualification entries for a specific resume. The owning userId from the parent path and resumeId should be denormalized into the document for authorization independence. Access is strictly limited to the owning student of the resume.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the student who owns the parent resume."
+            },
+            {
+              "name": "resumeId",
+              "description": "The unique identifier for the parent resume."
+            },
+            {
+              "name": "educationEntryId",
+              "description": "The unique identifier for the education entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/resumes/{resumeId}/experienceEntries/{experienceEntryId}",
+        "definition": {
+          "entityName": "ExperienceEntry",
+          "schema": {
+            "$ref": "#/backend/entities/ExperienceEntry"
+          },
+          "description": "Stores work or volunteer experience entries for a specific resume. The owning userId from the parent path and resumeId should be denormalized into the document for authorization independence. Access is strictly limited to the owning student of the resume.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the student who owns the parent resume."
+            },
+            {
+              "name": "resumeId",
+              "description": "The unique identifier for the parent resume."
+            },
+            {
+              "name": "experienceEntryId",
+              "description": "The unique identifier for the experience entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/resumes/{resumeId}/projectEntries/{projectEntryId}",
+        "definition": {
+          "entityName": "ProjectEntry",
+          "schema": {
+            "$ref": "#/backend/entities/ProjectEntry"
+          },
+          "description": "Stores project entries for a specific resume. The owning userId from the parent path and resumeId should be denormalized into the document for authorization independence. Access is strictly limited to the owning student of the resume.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the student who owns the parent resume."
+            },
+            {
+              "name": "resumeId",
+              "description": "The unique identifier for the parent resume."
+            },
+            {
+              "name": "projectEntryId",
+              "description": "The unique identifier for the project entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/skills/{skillId}",
+        "definition": {
+          "entityName": "Skill",
+          "schema": {
+            "$ref": "#/backend/entities/Skill"
+          },
+          "description": "Stores a global catalog of skills available for selection in resumes. This is a top-level collection with public read access, enabling QAP-compliant listing for all users. Write and update access is restricted to administrators.",
+          "params": [
+            {
+              "name": "skillId",
+              "description": "The unique identifier for the skill."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure for StudentHub AI prioritizes security, scalability, and debuggability by adhering to the core design principles and strategy mandates. The fundamental approach is to leverage path-based authorization for user-centric data and employ explicit denormalization of authorization context where hierarchical pathing is not feasible for query patterns (QAPs).\n\n**Authorization Independence via Denormalization:**\n\n1.  **User-Owned Data (e.g., Chat Sessions, Resumes):** For entities directly owned by a user, such as `ChatSession`, `Resume`, and their sub-entities (`ChatMessage`, `EducationEntry`, `ExperienceEntry`, `ProjectEntry`), a deeply nested, path-based ownership model is used: `/userProfiles/{userId}/chatSessions/{chatSessionId}` or `/userProfiles/{userId}/resumes/{resumeId}/educationEntries/{educationEntryId}`. In these structures, the `{userId}` wildcard in the path directly corresponds to `request.auth.uid`. To strictly adhere to denormalization for authorization independence, every document in these subcollections (e.g., `ChatSession`, `ChatMessage`, `Resume`, `EducationEntry`, `ExperienceEntry`, `ProjectEntry`) will explicitly include the `userId` (or `studentId` as per schema) field, ensuring that the document itself carries its owner's ID. This eliminates the need for `get()` calls in security rules to check parent document ownership, making rules atomic and easier to debug.\n\n2.  **Cross-User Data (e.g., Leave Applications):** The `LeaveApplication` entity needs to be queryable by individual students for their own applications, but also by administrators across *all* applications. Nesting `LeaveApplication` under `/userProfiles/{userId}` would make global admin queries impossible without multiple inefficient collection group queries or a full scan. Therefore, `LeaveApplication` is placed as a top-level collection: `/leaveApplications/{leaveApplicationId}`. For authorization independence, each `LeaveApplication` document explicitly denormalizes the `studentId` (owner) within its fields. This allows security rules to check `request.auth.uid == resource.data.studentId` directly, without any `get()` operations, for student-specific access.\n\n3.  **Global Data (e.g., Skills, Admin Roles):** The `Skill` entity is globally accessible for reading and managed by administrators. It's a top-level collection (`/skills/{skillId}`) with public read access and restricted admin write access. Administrator roles are managed via an existence-based collection (`/roles_admin/{adminUid}`). A document simply existing at `/roles_admin/$(request.auth.uid)` grants admin privileges, avoiding `get()` calls on `UserProfile` for role checks.\n\n**QAPs (Queries as Authorization Primitives):**\n\nThe structure is designed to enable secure `list` operations without relying on rules as filters:\n\n*   **User Profiles:** Users can only read their own profile (`/userProfiles/{request.auth.uid}`). Admins can list all user profiles by having specific rules on `/userProfiles` that check for admin role (`exists(/roles_admin/$(request.auth.uid))`).\n*   **Chat Sessions & Messages:** Users can only list their own chat sessions (`/userProfiles/{request.auth.uid}/chatSessions`) and messages within those sessions (`/userProfiles/{request.auth.uid}/chatSessions/{chatSessionId}/chatMessages`). The path structure inherently filters results by `request.auth.uid`.\n*   **Leave Applications:** Students can query for their own applications by adding a `where('studentId', '==', request.auth.uid)` clause to a query on `/leaveApplications`. Admins, identified by the existence of a document in `/roles_admin`, can query and list all documents in `/leaveApplications`.\n*   **Resumes & Resume Entries:** Similar to chat, users can only list their own resumes (`/userProfiles/{request.auth.uid}/resumes`) and the associated entries (Education, Experience, Project) within those resumes, due to the hierarchical pathing.\n*   **Skills:** The `/skills` collection is globally readable, allowing any user to `list` available skills. Write access is restricted to administrators.\n\nThis structure ensures that client-side queries naturally align with security rules, preventing accidental data exposure and simplifying rule logic. By embedding authorization fields (like `userId` or `studentId`) within documents, security rules are highly efficient, performing simple field comparisons instead of complex, non-atomic `get()` operations."
+  }
+}
