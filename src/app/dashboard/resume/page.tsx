@@ -1,16 +1,16 @@
-
 "use client"
 
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Trash2, Wand2, FileText, Download } from 'lucide-react';
+import { Loader2, Plus, Trash2, Wand2, Download, Mail, Phone, Link as LinkIcon } from 'lucide-react';
 import { generateResumeContent } from '@/ai/flows/ai-resume-content-generation';
 import { toast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase';
 
 type Experience = {
   id: string;
@@ -21,7 +21,8 @@ type Experience = {
 };
 
 export default function ResumeBuilderPage() {
-  const [skills, setSkills] = useState<string[]>(['React', 'TypeScript', 'Tailwind CSS']);
+  const { user } = useUser();
+  const [skills, setSkills] = useState<string[]>(['React', 'TypeScript', 'Next.js', 'Firebase', 'Tailwind CSS']);
   const [newSkill, setNewSkill] = useState('');
   const [experiences, setExperiences] = useState<Experience[]>([
     {
@@ -29,7 +30,7 @@ export default function ResumeBuilderPage() {
       title: 'Full Stack Intern',
       company: 'TechCorp Solutions',
       duration: 'June 2023 - Aug 2023',
-      description: 'Worked on building client-facing dashboards using Next.js and integrated them with Firebase.'
+      description: 'Built real-time dashboards using Next.js and Firebase. Optimized database queries for high scalability.'
     }
   ]);
   const [generatedContent, setGeneratedContent] = useState<{
@@ -82,7 +83,7 @@ export default function ResumeBuilderPage() {
       setGeneratedContent(result);
       toast({
         title: "Content Generated!",
-        description: "AI has polished your resume summary and experience points.",
+        description: "AI has polished your resume for maximum impact.",
       });
     } catch (error) {
       toast({
@@ -97,45 +98,45 @@ export default function ResumeBuilderPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print:hidden">
         <div>
           <h1 className="text-3xl font-bold font-headline text-primary">Resume Builder</h1>
-          <p className="text-muted-foreground">Create professional resumes with AI assistance.</p>
+          <p className="text-muted-foreground">AI-powered professional resume tailoring.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.print()}>
+          <Button variant="outline" onClick={() => window.print()} className="border-primary/20 text-primary hover:bg-primary/5">
             <Download className="mr-2 h-4 w-4" /> Download PDF
           </Button>
-          <Button onClick={handleGenerate} disabled={isLoading || experiences.length === 0}>
+          <Button onClick={handleGenerate} disabled={isLoading || experiences.length === 0} className="shadow-lg">
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-            Generate with AI
+            Polish with AI
           </Button>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Input Side */}
+        {/* Input Side - Hidden during print */}
         <div className="space-y-6 print:hidden">
-          <Card>
+          <Card className="border-primary/5 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg font-headline">Skills</CardTitle>
-              <CardDescription>Add key technical and soft skills.</CardDescription>
+              <CardTitle className="text-lg font-headline">Key Skills</CardTitle>
+              <CardDescription>Technical and professional competencies.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
                 <Input 
-                  placeholder="e.g. Python, Leadership" 
+                  placeholder="e.g. Leadership, Python" 
                   value={newSkill} 
                   onChange={(e) => setNewSkill(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addSkill()}
                 />
-                <Button variant="secondary" onClick={addSkill} size="icon">
+                <Button variant="secondary" onClick={addSkill} size="icon" className="shrink-0">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2">
                 {skills.map(skill => (
-                  <Badge key={skill} className="px-3 py-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
+                  <Badge key={skill} className="px-3 py-1 bg-primary/5 text-primary border-primary/10 hover:bg-primary/15 transition-colors">
                     {skill}
                     <button className="ml-2 hover:text-destructive" onClick={() => removeSkill(skill)}>
                       <Trash2 className="h-3 w-3" />
@@ -146,19 +147,19 @@ export default function ResumeBuilderPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-primary/5 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div>
-                <CardTitle className="text-lg font-headline">Work Experience</CardTitle>
-                <CardDescription>List your internships and projects.</CardDescription>
+                <CardTitle className="text-lg font-headline">Experience History</CardTitle>
+                <CardDescription>Detail your professional journey.</CardDescription>
               </div>
-              <Button variant="ghost" size="sm" onClick={addExperience}>
-                <Plus className="h-4 w-4 mr-1" /> Add
+              <Button variant="ghost" size="sm" onClick={addExperience} className="text-primary">
+                <Plus className="h-4 w-4 mr-1" /> Add Entry
               </Button>
             </CardHeader>
             <CardContent className="space-y-6">
-              {experiences.map((exp, idx) => (
-                <div key={exp.id} className="space-y-3 p-4 border rounded-lg relative group">
+              {experiences.map((exp) => (
+                <div key={exp.id} className="space-y-3 p-4 border border-dashed rounded-lg relative group bg-muted/20">
                   <button 
                     className="absolute top-4 right-4 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => removeExperience(exp.id)}
@@ -167,24 +168,25 @@ export default function ResumeBuilderPage() {
                   </button>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label>Title</Label>
-                      <Input value={exp.title} onChange={(e) => updateExperience(exp.id, 'title', e.target.value)} placeholder="Job Title" />
+                      <Label className="text-xs">Role Title</Label>
+                      <Input value={exp.title} onChange={(e) => updateExperience(exp.id, 'title', e.target.value)} placeholder="e.g. Software Engineer" />
                     </div>
                     <div className="space-y-1">
-                      <Label>Company</Label>
+                      <Label className="text-xs">Organization</Label>
                       <Input value={exp.company} onChange={(e) => updateExperience(exp.id, 'company', e.target.value)} placeholder="Company Name" />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label>Duration</Label>
-                    <Input value={exp.duration} onChange={(e) => updateExperience(exp.id, 'duration', e.target.value)} placeholder="e.g., Jan 2023 - June 2023" />
+                    <Label className="text-xs">Duration</Label>
+                    <Input value={exp.duration} onChange={(e) => updateExperience(exp.id, 'duration', e.target.value)} placeholder="e.g., Aug 2022 - Present" />
                   </div>
                   <div className="space-y-1">
-                    <Label>Original Description</Label>
+                    <Label className="text-xs">Raw Description</Label>
                     <Textarea 
                       value={exp.description} 
                       onChange={(e) => updateExperience(exp.id, 'description', e.target.value)} 
-                      placeholder="What did you do? AI will polish this later." 
+                      placeholder="List achievements or responsibilities. AI will polish this." 
+                      className="min-h-[100px]"
                     />
                   </div>
                 </div>
@@ -193,65 +195,68 @@ export default function ResumeBuilderPage() {
           </Card>
         </div>
 
-        {/* Preview Side */}
-        <div className="space-y-6">
-          <Card className="min-h-[600px] shadow-lg print:shadow-none print:border-none">
-            <CardHeader className="text-center border-b pb-8">
-              <CardTitle className="text-3xl font-bold font-headline">Alex Johnson</CardTitle>
-              <div className="flex justify-center gap-4 text-sm text-muted-foreground mt-2">
-                <span>alex.j@university.edu</span>
-                <span>•</span>
-                <span>+1 234 567 890</span>
-                <span>•</span>
-                <span>LinkedIn.com/in/alexj</span>
+        {/* Professional Preview Side - Styled for PDF */}
+        <div className="space-y-6 lg:sticky lg:top-6">
+          <Card className="min-h-[842px] w-full shadow-2xl print:shadow-none print:border-none print:p-0 print:m-0 bg-white">
+            <CardHeader className="text-center border-b-2 border-primary/20 pb-8 space-y-2">
+              <CardTitle className="text-4xl font-bold font-headline uppercase tracking-tight text-slate-900">
+                {user?.email?.split('@')[0].toUpperCase()} Student
+              </CardTitle>
+              <div className="flex justify-center flex-wrap gap-4 text-xs font-medium text-slate-600">
+                <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {user?.email}</span>
+                <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> +1 000 000 000</span>
+                <span className="flex items-center gap-1"><LinkIcon className="h-3 w-3" /> linkedin.com/in/student</span>
               </div>
             </CardHeader>
-            <CardContent className="pt-8 space-y-8">
-              <section className="space-y-2">
-                <h3 className="text-lg font-bold border-b pb-1 text-primary">PROFESSIONAL SUMMARY</h3>
-                <p className="text-sm leading-relaxed">
-                  {generatedContent ? generatedContent.summary : "Passionate Computer Science student with experience in full-stack development. Seeking to leverage skills in modern web technologies to contribute to innovative software solutions."}
+            <CardContent className="pt-8 space-y-10 px-10">
+              <section className="space-y-3">
+                <h3 className="text-sm font-black tracking-widest text-primary uppercase border-b border-slate-200 pb-1">Professional Profile</h3>
+                <p className="text-sm leading-relaxed text-slate-700 italic">
+                  {generatedContent ? generatedContent.summary : "Dedicated student with a strong background in collaborative environments and technical problem-solving. Proven ability to adapt to new technologies and deliver results under tight deadlines."}
                 </p>
               </section>
 
-              <section className="space-y-4">
-                <h3 className="text-lg font-bold border-b pb-1 text-primary">EXPERIENCE</h3>
+              <section className="space-y-6">
+                <h3 className="text-sm font-black tracking-widest text-primary uppercase border-b border-slate-200 pb-1">Professional Experience</h3>
                 {generatedContent ? (
                   generatedContent.experienceBulletPoints.map((exp, i) => (
-                    <div key={i} className="space-y-1">
-                      <div className="flex justify-between font-bold text-sm">
-                        <span>{exp.title}</span>
-                        <span className="text-muted-foreground font-normal">{experiences[i]?.duration}</span>
+                    <div key={i} className="space-y-2">
+                      <div className="flex justify-between items-baseline">
+                        <span className="font-bold text-slate-900">{exp.title}</span>
+                        <span className="text-xs font-bold text-slate-500 uppercase">{experiences[i]?.duration}</span>
                       </div>
-                      <div className="text-sm italic">{exp.company}</div>
-                      <ul className="list-disc ml-5 text-sm space-y-1 pt-1">
+                      <div className="text-xs font-black text-slate-400 uppercase tracking-tighter">{exp.company}</div>
+                      <ul className="list-disc ml-4 text-sm space-y-1.5 text-slate-700 pt-1">
                         {exp.bulletPoints.map((bp: string, j: number) => (
-                          <li key={j}>{bp}</li>
+                          <li key={j} className="pl-1 leading-snug">{bp}</li>
                         ))}
                       </ul>
                     </div>
                   ))
                 ) : (
                   experiences.map((exp) => (
-                    <div key={exp.id} className="space-y-1">
-                      <div className="flex justify-between font-bold text-sm">
-                        <span>{exp.title || "Position Title"}</span>
-                        <span className="text-muted-foreground font-normal">{exp.duration || "Period"}</span>
+                    <div key={exp.id} className="space-y-2">
+                      <div className="flex justify-between items-baseline">
+                        <span className="font-bold text-slate-900">{exp.title || "Position Title"}</span>
+                        <span className="text-xs font-bold text-slate-500 uppercase">{exp.duration || "Period"}</span>
                       </div>
-                      <div className="text-sm italic">{exp.company || "Company Name"}</div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {exp.description || "Enter details to see them here..."}
+                      <div className="text-xs font-black text-slate-400 uppercase tracking-tighter">{exp.company || "Organization Name"}</div>
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        {exp.description || "Describe your impact and key achievements in this role..."}
                       </p>
                     </div>
                   ))
                 )}
               </section>
 
-              <section className="space-y-2">
-                <h3 className="text-lg font-bold border-b pb-1 text-primary">SKILLS</h3>
-                <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              <section className="space-y-3">
+                <h3 className="text-sm font-black tracking-widest text-primary uppercase border-b border-slate-200 pb-1">Technical Expertise</h3>
+                <div className="grid grid-cols-2 gap-y-2 text-sm text-slate-700">
                   {skills.map(s => (
-                    <span key={s} className="font-medium">• {s}</span>
+                    <div key={s} className="flex items-center gap-2">
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary/40" />
+                      <span className="font-medium">{s}</span>
+                    </div>
                   ))}
                 </div>
               </section>
@@ -259,6 +264,36 @@ export default function ResumeBuilderPage() {
           </Card>
         </div>
       </div>
+
+      <style jsx global>{`
+        @media print {
+          body {
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+          nav, header, .sidebar, button, [role="alert"] {
+            display: none !important;
+          }
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .shadow-2xl, .shadow-lg, .shadow-sm {
+            box-shadow: none !important;
+          }
+          .border {
+            border: none !important;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

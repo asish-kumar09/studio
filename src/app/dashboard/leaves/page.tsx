@@ -1,7 +1,6 @@
-
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Calendar, Clock, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Plus, Calendar, Clock, CheckCircle2, XCircle, Loader2, BellRing } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
@@ -31,6 +30,7 @@ export default function LeavesPage() {
   const db = useFirestore();
   const { user } = useUser();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const prevStatuses = useRef<Record<string, string>>({});
 
   // Memoized query for current user's leaves
   const leavesQuery = useMemoFirebase(() => {
@@ -43,6 +43,28 @@ export default function LeavesPage() {
   }, [db, user]);
 
   const { data: leaves, isLoading } = useCollection<LeaveRequest>(leavesQuery);
+
+  // Automated Notifications Effect
+  useEffect(() => {
+    if (!leaves) return;
+
+    leaves.forEach(leave => {
+      const prevStatus = prevStatuses.current[leave.id];
+      if (prevStatus && prevStatus !== leave.status) {
+        toast({
+          title: `Status Update!`,
+          description: (
+            <div className="flex items-center gap-2">
+              <BellRing className="h-4 w-4 text-primary" />
+              <span>Your {leave.type} request is now <strong className="capitalize">{leave.status}</strong>.</span>
+            </div>
+          ),
+          variant: leave.status === 'rejected' ? 'destructive' : 'default',
+        });
+      }
+      prevStatuses.current[leave.id] = leave.status;
+    });
+  }, [leaves]);
 
   const handleApply = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -76,20 +98,20 @@ export default function LeavesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold font-headline text-primary">Leave Management</h1>
-          <p className="text-muted-foreground">Apply for and track your leave requests.</p>
+          <p className="text-muted-foreground">Apply for and track your leave requests in real-time.</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="shadow-md">
+            <Button className="shadow-md bg-primary hover:bg-primary/90">
               <Plus className="mr-2 h-4 w-4" /> Apply for Leave
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleApply}>
               <DialogHeader>
-                <DialogTitle className="font-headline">Apply for Leave</DialogTitle>
+                <DialogTitle className="font-headline text-primary">Apply for Leave</DialogTitle>
                 <DialogDescription>
-                  Fill in the details for your leave request.
+                  Enter your details. Administrators will receive your request immediately.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -113,7 +135,7 @@ export default function LeavesPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">Submit Request</Button>
+                <Button type="submit" className="w-full sm:w-auto">Submit Request</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -121,19 +143,19 @@ export default function LeavesPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-blue-50/50 border-blue-100">
+        <Card className="bg-primary/5 border-primary/10 hover:bg-primary/10 transition-colors">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-blue-500" />
-              Total Applied
+              <Calendar className="h-4 w-4 text-primary" />
+              History
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{leaves?.length || 0} Requests</div>
-            <p className="text-xs text-muted-foreground">Total applications made</p>
+            <p className="text-xs text-muted-foreground">Cumulative applications</p>
           </CardContent>
         </Card>
-        <Card className="bg-green-50/50 border-green-100">
+        <Card className="bg-green-500/5 border-green-500/10 hover:bg-green-500/10 transition-colors">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -142,10 +164,10 @@ export default function LeavesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{usedDays} Approved</div>
-            <p className="text-xs text-muted-foreground">Successfully processed</p>
+            <p className="text-xs text-muted-foreground">Processed successfully</p>
           </CardContent>
         </Card>
-        <Card className="bg-orange-50/50 border-orange-100">
+        <Card className="bg-orange-500/5 border-orange-500/10 hover:bg-orange-500/10 transition-colors">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Clock className="h-4 w-4 text-orange-500" />
@@ -154,15 +176,15 @@ export default function LeavesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pendingDays} Pending</div>
-            <p className="text-xs text-muted-foreground">Waiting for review</p>
+            <p className="text-xs text-muted-foreground">Under active review</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="shadow-sm">
+      <Card className="shadow-sm border-primary/5">
         <CardHeader>
           <CardTitle className="font-headline">Recent Leave Requests</CardTitle>
-          <CardDescription>A real-time history of your leave applications.</CardDescription>
+          <CardDescription>A live feed of your leave statuses.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -183,12 +205,12 @@ export default function LeavesPage() {
                 </TableRow>
               ) : leaves && leaves.length > 0 ? (
                 leaves.map((leave) => (
-                  <TableRow key={leave.id}>
+                  <TableRow key={leave.id} className="hover:bg-muted/50 transition-colors">
                     <TableCell className="font-medium">{leave.type}</TableCell>
-                    <TableCell>
-                      {leave.startDate} to {leave.endDate}
+                    <TableCell className="text-xs text-muted-foreground">
+                      {new Date(leave.startDate).toLocaleDateString()} to {new Date(leave.endDate).toLocaleDateString()}
                     </TableCell>
-                    <TableCell className="max-w-[200px] truncate">{leave.reason}</TableCell>
+                    <TableCell className="max-w-[200px] truncate text-sm">{leave.reason}</TableCell>
                     <TableCell>
                       <Badge
                         variant={
@@ -210,8 +232,8 @@ export default function LeavesPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                    No leave requests found.
+                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground italic">
+                    No leave requests submitted yet.
                   </TableCell>
                 </TableRow>
               )}
