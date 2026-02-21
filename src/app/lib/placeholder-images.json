@@ -8,16 +8,16 @@
       "imageHint": "students studying"
     },
     {
-      "id": "avatar-1",
+      "id": "avatar-student",
       "description": "Professional profile picture for a student.",
-      "imageUrl": "https://picsum.photos/seed/avatar1/150/150",
-      "imageHint": "professional portrait"
+      "imageUrl": "https://picsum.photos/seed/avatar-stud/150/150",
+      "imageHint": "student portrait"
     },
     {
       "id": "avatar-admin",
       "description": "Admin user profile picture.",
-      "imageUrl": "https://picsum.photos/seed/admin-avatar/150/150",
-      "imageHint": "person portrait"
+      "imageUrl": "https://picsum.photos/seed/admin-user/150/150",
+      "imageHint": "professional person"
     }
   ]
 }
