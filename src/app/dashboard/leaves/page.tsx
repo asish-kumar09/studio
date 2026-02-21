@@ -10,44 +10,66 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Calendar, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Calendar, Clock, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 type LeaveRequest = {
   id: string;
+  studentId: string;
   type: string;
   startDate: string;
   endDate: string;
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status: 'pending' | 'approved' | 'rejected';
   reason: string;
+  applicationDate: string;
 };
 
 export default function LeavesPage() {
-  const [leaves, setLeaves] = useState<LeaveRequest[]>([
-    { id: '1', type: 'Medical', startDate: '2024-03-10', endDate: '2024-03-12', status: 'Approved', reason: 'Flu symptoms' },
-    { id: '2', type: 'Personal', startDate: '2024-03-25', endDate: '2024-03-26', status: 'Pending', reason: 'Family event' },
-  ]);
-
+  const db = useFirestore();
+  const { user } = useUser();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Memoized query for current user's leaves
+  const leavesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(db, 'leaveApplications'),
+      where('studentId', '==', user.uid),
+      orderBy('applicationDate', 'desc')
+    );
+  }, [db, user]);
+
+  const { data: leaves, isLoading } = useCollection<LeaveRequest>(leavesQuery);
 
   const handleApply = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!user) return;
+
     const formData = new FormData(e.currentTarget);
-    const newLeave: LeaveRequest = {
-      id: Math.random().toString(36).substr(2, 9),
+    const leaveData = {
+      studentId: user.uid,
       type: formData.get('type') as string,
       startDate: formData.get('startDate') as string,
       endDate: formData.get('endDate') as string,
-      status: 'Pending',
+      status: 'pending',
       reason: formData.get('reason') as string,
+      applicationDate: new Date().toISOString(),
     };
-    setLeaves([newLeave, ...leaves]);
+
+    addDocumentNonBlocking(collection(db, 'leaveApplications'), leaveData);
+    
     setIsDialogOpen(false);
     toast({
       title: "Leave Applied",
       description: "Your leave request has been submitted for approval.",
     });
   };
+
+  const usedDays = leaves?.filter(l => l.status === 'approved').length || 0;
+  const pendingDays = leaves?.filter(l => l.status === 'pending').length || 0;
 
   return (
     <div className="space-y-6">
@@ -103,36 +125,36 @@ export default function LeavesPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Calendar className="h-4 w-4 text-blue-500" />
-              Total Leaves
+              Total Applied
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">20 Days</div>
-            <p className="text-xs text-muted-foreground">Annual allowance</p>
+            <div className="text-2xl font-bold">{leaves?.length || 0} Requests</div>
+            <p className="text-xs text-muted-foreground">Total applications made</p>
           </CardContent>
         </Card>
         <Card className="bg-green-50/50 border-green-100">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-500" />
-              Used
+              Approved
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8 Days</div>
-            <p className="text-xs text-muted-foreground">40% of allowance</p>
+            <div className="text-2xl font-bold">{usedDays} Approved</div>
+            <p className="text-xs text-muted-foreground">Successfully processed</p>
           </CardContent>
         </Card>
         <Card className="bg-orange-50/50 border-orange-100">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Clock className="h-4 w-4 text-orange-500" />
-              Remaining
+              Pending
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12 Days</div>
-            <p className="text-xs text-muted-foreground">Available for use</p>
+            <div className="text-2xl font-bold">{pendingDays} Pending</div>
+            <p className="text-xs text-muted-foreground">Waiting for review</p>
           </CardContent>
         </Card>
       </div>
@@ -140,7 +162,7 @@ export default function LeavesPage() {
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="font-headline">Recent Leave Requests</CardTitle>
-          <CardDescription>A history of your leave applications.</CardDescription>
+          <CardDescription>A real-time history of your leave applications.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -153,33 +175,40 @@ export default function LeavesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {leaves.map((leave) => (
-                <TableRow key={leave.id}>
-                  <TableCell className="font-medium">{leave.type}</TableCell>
-                  <TableCell>
-                    {leave.startDate} to {leave.endDate}
-                  </TableCell>
-                  <TableCell className="max-w-[200px] truncate">{leave.reason}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        leave.status === 'Approved'
-                          ? 'default'
-                          : leave.status === 'Pending'
-                          ? 'secondary'
-                          : 'destructive'
-                      }
-                      className="gap-1"
-                    >
-                      {leave.status === 'Approved' && <CheckCircle2 className="h-3 w-3" />}
-                      {leave.status === 'Pending' && <Clock className="h-3 w-3" />}
-                      {leave.status === 'Rejected' && <XCircle className="h-3 w-3" />}
-                      {leave.status}
-                    </Badge>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                   </TableCell>
                 </TableRow>
-              ))}
-              {leaves.length === 0 && (
+              ) : leaves && leaves.length > 0 ? (
+                leaves.map((leave) => (
+                  <TableRow key={leave.id}>
+                    <TableCell className="font-medium">{leave.type}</TableCell>
+                    <TableCell>
+                      {leave.startDate} to {leave.endDate}
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate">{leave.reason}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          leave.status === 'approved'
+                            ? 'default'
+                            : leave.status === 'pending'
+                            ? 'secondary'
+                            : 'destructive'
+                        }
+                        className="gap-1 capitalize"
+                      >
+                        {leave.status === 'approved' && <CheckCircle2 className="h-3 w-3" />}
+                        {leave.status === 'pending' && <Clock className="h-3 w-3" />}
+                        {leave.status === 'rejected' && <XCircle className="h-3 w-3" />}
+                        {leave.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                     No leave requests found.

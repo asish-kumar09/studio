@@ -3,11 +3,42 @@
 
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { DashboardNav } from "@/components/dashboard-nav"
-import { Layout, Bell, User } from "lucide-react"
+import { Layout, Bell, User, Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
+import { doc } from "firebase/firestore"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+  const db = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(db, 'userProfiles', user.uid);
+  }, [db, user]);
+
+  const { data: profile } = useDoc(userProfileRef);
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  if (isUserLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
@@ -31,12 +62,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Button>
               <div className="flex items-center gap-3 pl-4 border-l">
                 <div className="text-right hidden sm:block">
-                  <p className="text-sm font-medium leading-none">Alex Johnson</p>
-                  <p className="text-xs text-muted-foreground">Computer Science Major</p>
+                  <p className="text-sm font-medium leading-none">
+                    {profile ? `${profile.firstName} ${profile.lastName}` : user.email}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {profile?.role === 'admin' ? 'Administrator' : 'Student'}
+                  </p>
                 </div>
                 <Avatar>
-                  <AvatarImage src="https://picsum.photos/seed/alex/150/150" />
-                  <AvatarFallback>AJ</AvatarFallback>
+                  <AvatarImage src={`https://picsum.photos/seed/${user.uid}/150/150`} />
+                  <AvatarFallback>{profile?.firstName?.[0] || 'U'}</AvatarFallback>
                 </Avatar>
               </div>
             </div>

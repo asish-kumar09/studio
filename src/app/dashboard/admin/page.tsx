@@ -6,7 +6,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from "recharts"
-import { ShieldAlert, Users, Calendar, CheckCircle, XCircle } from "lucide-react"
+import { ShieldAlert, Users, Calendar, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase"
+import { collection, query, orderBy, doc } from "firebase/firestore"
+import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates"
+import { toast } from "@/hooks/use-toast"
 
 const activityData = [
   { name: "Mon", queries: 40 },
@@ -18,14 +22,38 @@ const activityData = [
   { name: "Sun", queries: 15 },
 ]
 
-const recentRequests = [
-  { id: "101", student: "Sarah Miller", type: "Medical Leave", status: "Pending", date: "2024-03-12" },
-  { id: "102", student: "John Davis", type: "Personal Leave", status: "Approved", date: "2024-03-11" },
-  { id: "103", student: "Emma Wilson", type: "Internship Leave", status: "Approved", date: "2024-03-10" },
-  { id: "104", student: "Michael Brown", type: "Family Emergency", status: "Rejected", date: "2024-03-09" },
-]
+type LeaveRequest = {
+  id: string;
+  studentId: string;
+  type: string;
+  startDate: string;
+  endDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reason: string;
+  applicationDate: string;
+};
 
 export default function AdminDashboardPage() {
+  const db = useFirestore();
+  
+  const leavesQuery = useMemoFirebase(() => {
+    return query(collection(db, 'leaveApplications'), orderBy('applicationDate', 'desc'));
+  }, [db]);
+
+  const { data: leaves, isLoading: isLeavesLoading } = useCollection<LeaveRequest>(leavesQuery);
+  const { data: students, isLoading: isStudentsLoading } = useCollection(collection(db, 'userProfiles'));
+
+  const handleStatusUpdate = (leaveId: string, status: 'approved' | 'rejected') => {
+    const leaveRef = doc(db, 'leaveApplications', leaveId);
+    updateDocumentNonBlocking(leaveRef, { status });
+    toast({
+      title: `Request ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+      description: `Leave request has been updated to ${status}.`,
+    });
+  };
+
+  const pendingCount = leaves?.filter(l => l.status === 'pending').length || 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -44,8 +72,8 @@ export default function AdminDashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,284</div>
-            <p className="text-xs text-muted-foreground">+42 this month</p>
+            <div className="text-2xl font-bold">{isStudentsLoading ? '...' : students?.length || 0}</div>
+            <p className="text-xs text-muted-foreground">Registered in system</p>
           </CardContent>
         </Card>
         <Card>
@@ -54,7 +82,7 @@ export default function AdminDashboardPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
+            <div className="text-2xl font-bold">{isLeavesLoading ? '...' : pendingCount}</div>
             <p className="text-xs text-muted-foreground">Action required soon</p>
           </CardContent>
         </Card>
@@ -97,47 +125,61 @@ export default function AdminDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="font-headline">Recent Approvals</CardTitle>
-              <CardDescription>Review student leave requests.</CardDescription>
+              <CardTitle className="font-headline">Recent Requests</CardTitle>
+              <CardDescription>Review and process student leave requests.</CardDescription>
             </div>
-            <Button variant="outline" size="sm">View All</Button>
+            <Button variant="outline" size="sm">History</Button>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Student</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Period</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentRequests.map((req) => (
-                  <TableRow key={req.id}>
-                    <TableCell className="font-medium">{req.student}</TableCell>
-                    <TableCell>{req.type}</TableCell>
-                    <TableCell>
-                      <Badge variant={req.status === 'Approved' ? 'default' : req.status === 'Pending' ? 'secondary' : 'destructive'}>
-                        {req.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {req.status === 'Pending' ? (
-                        <div className="flex justify-end gap-2">
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-green-500">
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive">
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Processed</span>
-                      )}
+                {isLeavesLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : leaves && leaves.length > 0 ? (
+                  leaves.slice(0, 5).map((req) => (
+                    <TableRow key={req.id}>
+                      <TableCell className="font-medium">{req.type}</TableCell>
+                      <TableCell className="text-xs">{req.startDate} to {req.endDate}</TableCell>
+                      <TableCell>
+                        <Badge variant={req.status === 'approved' ? 'default' : req.status === 'pending' ? 'secondary' : 'destructive'} className="capitalize">
+                          {req.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {req.status === 'pending' ? (
+                          <div className="flex justify-end gap-2">
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-green-500" onClick={() => handleStatusUpdate(req.id, 'approved')}>
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleStatusUpdate(req.id, 'rejected')}>
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">Processed</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
+                      No requests found
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
