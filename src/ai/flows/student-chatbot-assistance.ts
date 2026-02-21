@@ -1,6 +1,8 @@
+
 'use server';
 /**
  * @fileOverview This file implements a Genkit flow for an AI chatbot that assists students.
+ * It uses tool-calling to fetch real-time student data (like leave status).
  *
  * - studentChatbotAssistance - A function that handles student queries and provides helpful answers.
  * - StudentChatbotAssistanceInput - The input type for the studentChatbotAssistance function.
@@ -9,9 +11,16 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+
+// Initialize Firebase Admin for server-side database access within Genkit tools
+const adminApp = getApps().length === 0 ? initializeApp() : getApps()[0];
+const adminDb = getFirestore(adminApp);
 
 const StudentChatbotAssistanceInputSchema = z.object({
   query: z.string().describe('The student\'s academic or general student life query.'),
+  studentId: z.string().describe('The unique ID of the authenticated student.'),
   history: z.array(z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string()
@@ -24,6 +33,30 @@ const StudentChatbotAssistanceOutputSchema = z.object({
 });
 export type StudentChatbotAssistanceOutput = z.infer<typeof StudentChatbotAssistanceOutputSchema>;
 
+/**
+ * Tool to fetch a student's leave applications.
+ */
+const getStudentLeaveHistory = ai.defineTool(
+  {
+    name: 'getStudentLeaveHistory',
+    description: 'Retrieves the list of leave applications for the student to check their status or history.',
+    inputSchema: z.object({
+      studentId: z.string().describe('The student ID to fetch leaves for.'),
+    }),
+    outputSchema: z.array(z.any()),
+  },
+  async (input) => {
+    const snapshot = await adminDb
+      .collection('leaveApplications')
+      .where('studentId', '==', input.studentId)
+      .orderBy('applicationDate', 'desc')
+      .limit(5)
+      .get();
+    
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  }
+);
+
 export async function studentChatbotAssistance(
   input: StudentChatbotAssistanceInput
 ): Promise<StudentChatbotAssistanceOutput> {
@@ -34,9 +67,17 @@ const studentChatbotPrompt = ai.definePrompt({
   name: 'studentChatbotPrompt',
   input: {schema: StudentChatbotAssistanceInputSchema},
   output: {schema: StudentChatbotAssistanceOutputSchema},
-  prompt: `You are an AI chatbot named StudentHub AI, designed to assist students with their academic queries and general student life questions.
-Your goal is to provide relevant, accurate, and helpful answers to the best of your abilities.
-Base your answers on general knowledge and maintain a supportive, encouraging tone.
+  tools: [getStudentLeaveHistory],
+  prompt: `You are an AI chatbot named StudentHub AI, designed to assist students.
+You have access to tools that can fetch real-time student data.
+
+**Current Student Context:**
+- Student ID: {{{studentId}}}
+
+**Instructions:**
+1. If the student asks about their leave requests, status, or history, use the 'getStudentLeaveHistory' tool.
+2. Provide concise, helpful, and supportive answers.
+3. If tool data is returned, summarize it clearly for the student.
 
 {{#if history}}
 **Conversation History:**

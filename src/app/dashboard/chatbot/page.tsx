@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useRef, useEffect } from 'react';
@@ -6,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, Loader2, MessageSquare, User, Plus, History, Trash2 } from 'lucide-react';
+import { Send, Loader2, MessageSquare, User, Plus, History, Trash2, Bot } from 'lucide-react';
 import { studentChatbotAssistance } from '@/ai/flows/student-chatbot-assistance';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -35,7 +36,6 @@ export default function ChatbotPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 1. Fetch all sessions for history sidebar
   const sessionsQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -46,7 +46,6 @@ export default function ChatbotPage() {
 
   const { data: sessions, isLoading: isSessionsLoading } = useCollection<ChatSession>(sessionsQuery);
 
-  // 2. Fetch messages for the active session
   const messagesQuery = useMemoFirebase(() => {
     if (!user || !activeSessionId) return null;
     return query(
@@ -57,7 +56,6 @@ export default function ChatbotPage() {
 
   const { data: messages, isLoading: isMessagesLoading } = useCollection<ChatMessage>(messagesQuery);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -94,7 +92,6 @@ export default function ChatbotPage() {
     let currentSessionId = activeSessionId;
 
     try {
-      // 1. If no active session, create one
       if (!currentSessionId) {
         const newSessionRef = doc(collection(db, 'userProfiles', user.uid, 'chatSessions'));
         currentSessionId = newSessionRef.id;
@@ -107,7 +104,6 @@ export default function ChatbotPage() {
         setActiveSessionId(currentSessionId);
       }
 
-      // 2. Add user message to Firestore
       const messagesRef = collection(db, 'userProfiles', user.uid, 'chatSessions', currentSessionId, 'chatMessages');
       addDocumentNonBlocking(messagesRef, {
         senderType: 'user',
@@ -116,19 +112,17 @@ export default function ChatbotPage() {
         sessionId: currentSessionId,
       });
 
-      // 3. Prepare history for AI
       const history = messages?.map(msg => ({
         role: msg.senderType === 'user' ? 'user' : 'assistant' as 'user' | 'assistant',
         content: msg.content
       })) || [];
 
-      // 4. Call AI
       const result = await studentChatbotAssistance({ 
         query: userQuery,
-        history: history.slice(-5) // Send last 5 messages for context
+        studentId: user.uid, // PASSING STUDENT ID FOR TOOL CALLING
+        history: history.slice(-5)
       });
 
-      // 5. Add AI response to Firestore
       addDocumentNonBlocking(messagesRef, {
         senderType: 'assistant',
         content: result.answer,
@@ -152,11 +146,10 @@ export default function ChatbotPage() {
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       <div className="mb-6">
         <h1 className="text-3xl font-bold font-headline text-primary">Intelligent Assistant</h1>
-        <p className="text-muted-foreground">Ask anything about university life or your courses.</p>
+        <p className="text-muted-foreground">Ask about university life, policies, or check your leave status.</p>
       </div>
 
       <div className="flex-1 flex gap-6 overflow-hidden">
-        {/* History Sidebar */}
         <Card className="w-64 flex flex-col hidden md:flex">
           <CardHeader className="py-4 border-b">
             <Button onClick={handleStartNewChat} className="w-full justify-start gap-2" variant={activeSessionId ? "outline" : "default"}>
@@ -201,16 +194,12 @@ export default function ChatbotPage() {
           </ScrollArea>
         </Card>
 
-        {/* Main Chat Interface */}
         <Card className="flex-1 flex flex-col shadow-lg border-primary/10">
           <CardHeader className="border-b py-3 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <div className={cn("h-2 w-2 rounded-full", isGenerating ? "bg-orange-500 animate-pulse" : "bg-green-500")} />
               {activeSessionId ? (sessions?.find(s => s.id === activeSessionId)?.title || "Current Chat") : "New Session"}
             </CardTitle>
-            <Button variant="ghost" size="sm" className="md:hidden" onClick={handleStartNewChat}>
-              <Plus className="h-4 w-4" />
-            </Button>
           </CardHeader>
           
           <CardContent className="flex-1 p-0 overflow-hidden bg-muted/30">
@@ -219,12 +208,12 @@ export default function ChatbotPage() {
                 {!activeSessionId && !messages?.length && !isGenerating && (
                   <div className="flex flex-col items-center justify-center h-[400px] text-center space-y-4">
                     <div className="bg-primary/10 p-4 rounded-full">
-                      <MessageSquare className="h-12 w-12 text-primary" />
+                      <Bot className="h-12 w-12 text-primary" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold">Start a new conversation</h3>
+                      <h3 className="text-lg font-bold">How can I help you today?</h3>
                       <p className="text-muted-foreground text-sm max-w-xs mx-auto">
-                        Ask about exam dates, leave policies, or get tips for your resume.
+                        Try asking "What is the status of my recent leave requests?" or "How do I build a professional resume?"
                       </p>
                     </div>
                   </div>
@@ -238,8 +227,8 @@ export default function ChatbotPage() {
                     <Avatar className="h-8 w-8 mt-1 border shadow-sm">
                       {message.senderType === 'assistant' ? (
                         <>
-                          <AvatarImage src="https://picsum.photos/seed/bot/150/150" />
-                          <AvatarFallback><MessageSquare className="h-4 w-4" /></AvatarFallback>
+                          <AvatarImage src="https://picsum.photos/seed/bot-ai/150/150" />
+                          <AvatarFallback><Bot className="h-4 w-4" /></AvatarFallback>
                         </>
                       ) : (
                         <>
@@ -264,8 +253,8 @@ export default function ChatbotPage() {
                 {isGenerating && (
                   <div className="flex items-start gap-3">
                     <Avatar className="h-8 w-8 mt-1 border shadow-sm">
-                      <AvatarImage src="https://picsum.photos/seed/bot/150/150" />
-                      <AvatarFallback><MessageSquare className="h-4 w-4" /></AvatarFallback>
+                      <AvatarImage src="https://picsum.photos/seed/bot-ai/150/150" />
+                      <AvatarFallback><Bot className="h-4 w-4" /></AvatarFallback>
                     </Avatar>
                     <div className="bg-white rounded-2xl px-4 py-2.5 flex items-center gap-1 shadow-sm border border-primary/5 rounded-tl-none">
                       <span className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-bounce" />
@@ -281,7 +270,7 @@ export default function ChatbotPage() {
           <CardFooter className="border-t p-4 bg-background">
             <form onSubmit={handleSubmit} className="flex w-full gap-2 max-w-4xl mx-auto">
               <Input
-                placeholder="Type your message..."
+                placeholder="Ask me anything..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 className="flex-1"
