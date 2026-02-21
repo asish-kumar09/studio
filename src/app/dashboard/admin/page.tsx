@@ -1,4 +1,3 @@
-
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -52,7 +51,7 @@ export default function AdminDashboardPage() {
     });
   };
 
-  const pendingCount = leaves?.filter(l => l.status === 'pending').length || 0;
+  const pendingCount = leaves?.filter(l => l.status === 'pending')?.length || 0;
 
   return (
     <div className="space-y-6">

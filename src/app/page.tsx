@@ -1,12 +1,12 @@
-
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { PlaceHolderImages } from '@/app/lib/placeholder-images';
-import { Layout, MessageSquare, FileText, Calendar, ShieldCheck } from 'lucide-react';
+import { Layout, MessageSquare, FileText, Calendar } from 'lucide-react';
 
 export default function Home() {
-  const heroImage = PlaceHolderImages.find(img => img.id === 'hero-student');
+  // Use optional chaining or fallback to prevent crashes if PlaceHolderImages is not yet populated
+  const heroImage = (PlaceHolderImages || []).find(img => img.id === 'hero-student');
 
   return (
     <div className="flex flex-col min-h-screen bg-white">

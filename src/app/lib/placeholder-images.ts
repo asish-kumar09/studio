@@ -7,4 +7,5 @@ export interface ImagePlaceholder {
   imageHint: string;
 }
 
-export const PlaceHolderImages: ImagePlaceholder[] = data.placeholderImages;
+// Ensure the export is always an array to prevent "find" errors on undefined
+export const PlaceHolderImages: ImagePlaceholder[] = data?.placeholderImages || [];

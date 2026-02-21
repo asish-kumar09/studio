@@ -90,8 +90,8 @@ export default function LeavesPage() {
     });
   };
 
-  const usedDays = leaves?.filter(l => l.status === 'approved').length || 0;
-  const pendingDays = leaves?.filter(l => l.status === 'pending').length || 0;
+  const usedDays = leaves?.filter(l => l.status === 'approved')?.length || 0;
+  const pendingDays = leaves?.filter(l => l.status === 'pending')?.length || 0;
 
   return (
     <div className="space-y-6">

@@ -27,8 +27,8 @@ export default function DashboardPage() {
 
   const { data: recentChats, isLoading: isChatsLoading } = useCollection(chatsQuery);
 
-  const approvedCount = leaves?.filter(l => l.status === 'approved').length || 0;
-  const pendingCount = leaves?.filter(l => l.status === 'pending').length || 0;
+  const approvedCount = leaves?.filter(l => l.status === 'approved')?.length || 0;
+  const pendingCount = leaves?.filter(l => l.status === 'pending')?.length || 0;
 
   return (
     <div className="space-y-6">
