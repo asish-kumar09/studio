@@ -1,0 +1,46 @@
+'use server';
+/**
+ * @fileOverview This file implements a Genkit flow for an AI chatbot that assists students.
+ *
+ * - studentChatbotAssistance - A function that handles student queries and provides helpful answers.
+ * - StudentChatbotAssistanceInput - The input type for the studentChatbotAssistance function.
+ * - StudentChatbotAssistanceOutput - The return type for the studentChatbotAssistance function.
+ */
+
+import {ai} from '@/ai/genkit';
+import {z} from 'genkit';
+
+const StudentChatbotAssistanceInputSchema = z.object({
+  query: z.string().describe('The student\'s academic or general student life query.'),
+});
+export type StudentChatbotAssistanceInput = z.infer<typeof StudentChatbotAssistanceInputSchema>;
+
+const StudentChatbotAssistanceOutputSchema = z.object({
+  answer: z.string().describe('A relevant and helpful answer to the student\'s query.'),
+});
+export type StudentChatbotAssistanceOutput = z.infer<typeof StudentChatbotAssistanceOutputSchema>;
+
+export async function studentChatbotAssistance(
+  input: StudentChatbotAssistanceInput
+): Promise<StudentChatbotAssistanceOutput> {
+  return studentChatbotAssistanceFlow(input);
+}
+
+const studentChatbotPrompt = ai.definePrompt({
+  name: 'studentChatbotPrompt',
+  input: {schema: StudentChatbotAssistanceInputSchema},
+  output: {schema: StudentChatbotAssistanceOutputSchema},
+  prompt: `You are an AI chatbot named StudentHub AI, designed to assist students with their academic queries and general student life questions.\nYour goal is to provide relevant, accurate, and helpful answers to the best of your abilities.\nIf you had access to specific student data, you would use it to enhance your reasoning and provide personalized support, but for now, base your answers on general knowledge.\nBe supportive and encouraging.\n\nStudent Query: {{{query}}}`,
+});
+
+const studentChatbotAssistanceFlow = ai.defineFlow(
+  {
+    name: 'studentChatbotAssistanceFlow',
+    inputSchema: StudentChatbotAssistanceInputSchema,
+    outputSchema: StudentChatbotAssistanceOutputSchema,
+  },
+  async input => {
+    const {output} = await studentChatbotPrompt(input);
+    return output!;
+  }
+);

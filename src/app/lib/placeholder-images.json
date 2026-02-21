@@ -1,0 +1,23 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-student",
+      "description": "A group of happy students studying together in a modern library.",
+      "imageUrl": "https://picsum.photos/seed/student-hero/1200/600",
+      "imageHint": "students studying"
+    },
+    {
+      "id": "avatar-1",
+      "description": "Professional profile picture for a student.",
+      "imageUrl": "https://picsum.photos/seed/avatar1/150/150",
+      "imageHint": "professional portrait"
+    },
+    {
+      "id": "avatar-admin",
+      "description": "Admin user profile picture.",
+      "imageUrl": "https://picsum.photos/seed/admin-avatar/150/150",
+      "imageHint": "person portrait"
+    }
+  ]
+}
