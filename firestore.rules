@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -19,12 +20,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Simplified admin check to avoid recursion in rules.
-    // Relies on a dedicated 'roles_admin' collection for authorization independence.
+    // isAdmin strictly checks the existence-based roles_admin collection.
+    // This is the source of truth for administrative privileges.
     function isAdmin() {
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))
-      );
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
     function isUnchanged(field) {
@@ -74,17 +73,17 @@ service cloud.firestore {
     }
 
     match /roles_admin/{adminUid} {
-      // Basic existence check is enough for admins to list roles if needed
+      // Only existing admins can manage roles, but any signed-in user can check their own.
       allow get: if isSignedIn();
-      allow list: if isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-      allow write: if isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      allow list: if isAdmin();
+      allow write: if isAdmin();
     }
 
     match /leaveApplications/{leaveApplicationId} {
       // Allow read if user is admin or the student who owns the request
       allow get: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid);
       
-      // Enforce QAP: Non-admins MUST filter by studentId
+      // Enforce QAP: Students MUST filter by their studentId. Admins can list all.
       allow list: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.studentId);
       
       allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;

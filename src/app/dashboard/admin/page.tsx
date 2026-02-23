@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,25 +38,20 @@ export default function AdminDashboardPage() {
   const { user } = useUser();
   const db = useFirestore();
 
-  const userProfileRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(db, 'userProfiles', user.uid);
-  }, [db, user]);
-
-  // Check roles_admin existence to align with security rules
+  // Reference to the roles_admin document for this user.
+  // Security rules strictly check this path for isAdmin() logic.
   const adminRoleRef = useMemoFirebase(() => {
     if (!user) return null;
     return doc(db, 'roles_admin', user.uid);
   }, [db, user]);
 
-  const { data: profile, isLoading: isProfileLoading } = useDoc(userProfileRef);
   const { data: adminRoleDoc, isLoading: isAdminRoleLoading } = useDoc(adminRoleRef);
   
-  // Explicitly check for admin role. If profile is loading or role is not admin, this is false.
-  // We also verify the roles_admin existence for production consistency.
-  const isAuthorized = profile?.role === 'admin' || !!adminRoleDoc;
+  // Strictly authorize based on the existence of the admin role document.
+  // This prevents triggering unauthorized queries if the user is a student.
+  const isAuthorized = !!adminRoleDoc;
 
-  // These queries will only ever execute if authorization is strictly confirmed.
+  // These queries will only ever execute if authorization is strictly confirmed via roles_admin.
   const leavesQuery = useMemoFirebase(() => {
     if (!isAuthorized) return null;
     return query(
@@ -82,7 +78,8 @@ export default function AdminDashboardPage() {
     });
   };
 
-  if (isProfileLoading || isAdminRoleLoading) {
+  // Wait for auth verification before showing anything
+  if (isAdminRoleLoading) {
     return (
       <div className="flex items-center justify-center h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -90,6 +87,7 @@ export default function AdminDashboardPage() {
     );
   }
 
+  // If verification finishes and the user is not an admin, show Access Denied.
   if (!isAuthorized) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
@@ -99,7 +97,7 @@ export default function AdminDashboardPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold font-headline">Access Denied</h2>
           <p className="text-muted-foreground max-w-md">
-            This area is restricted to system administrators. If you believe this is an error, please ensure you are logged into an admin account.
+            This area is restricted to system administrators. Students do not have permission to view global academic records.
           </p>
         </div>
         <Button asChild variant="outline">
