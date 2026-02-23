@@ -1,4 +1,3 @@
-
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { Layout, MessageSquare, FileText, Calendar, CheckCircle, Rocket, Globe, 
 
 export default function Home() {
   // Safe find to prevent crashes if array is empty or initialization is pending
-  const heroImage = PlaceHolderImages?.find(img => img.id === 'hero-student');
+  const heroImage = (PlaceHolderImages || []).find(img => img.id === 'hero-student');
 
   return (
     <div className="flex flex-col min-h-screen bg-white">

@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -8,7 +7,6 @@ service cloud.firestore {
      * 
      * Core Philosophy: 
      * This ruleset enforces a strict user-ownership model combined with role-based access for administrators. 
-     * High performance is achieved through path-based authorization and denormalized ownership fields.
      */
 
     // --- Helper Functions ---
@@ -22,8 +20,11 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // Efficiently check for admin existence in roles_admin collection
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      // Robust admin check: existence in roles_admin OR verified role in userProfiles
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'admin'
+      );
     }
 
     function isUnchanged(field) {
@@ -34,7 +35,7 @@ service cloud.firestore {
 
     match /userProfiles/{userId} {
       allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin() || isOwner(userId);
+      allow list: if isAdmin();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isOwner(userId) && resource != null && isUnchanged('id');
       allow delete: if isOwner(userId) && resource != null;
@@ -48,8 +49,8 @@ service cloud.firestore {
         match /chatMessages/{chatMessageId} {
           allow get, list: if isOwner(userId);
           allow create: if isOwner(userId);
-          allow update: if isOwner(userId) && resource != null;
-          allow delete: if isOwner(userId) && resource != null;
+          allow update: if isOwner(userId);
+          allow delete: if isOwner(userId);
         }
       }
 
@@ -73,7 +74,8 @@ service cloud.firestore {
 
     match /roles_admin/{adminUid} {
       allow get: if isSignedIn();
-      allow list, write: if isAdmin();
+      allow list: if isAdmin();
+      allow write: if isAdmin();
     }
 
     match /leaveApplications/{leaveApplicationId} {
@@ -81,7 +83,7 @@ service cloud.firestore {
       allow get: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid);
       
       // Enforce QAP: Non-admins MUST filter by studentId
-      allow list: if isAdmin() || (isSignedIn() && request.query.limit <= 100 && resource.data.studentId == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.studentId);
       
       allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
       

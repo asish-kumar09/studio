@@ -1,4 +1,3 @@
-
 import data from './placeholder-images.json';
 
 export interface ImagePlaceholder {

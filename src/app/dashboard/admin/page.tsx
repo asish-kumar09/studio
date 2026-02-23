@@ -1,4 +1,3 @@
-
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -45,11 +44,10 @@ export default function AdminDashboardPage() {
 
   const { data: profile, isLoading: isProfileLoading } = useDoc(userProfileRef);
   
-  // Strict authorization guard: only true if profile exists and role is admin
+  // Strict authorization guard: only true if profile exists and role is explicitly admin
   const isAuthorized = profile && profile.role === 'admin';
 
-  // These queries will only ever be non-null if the client-side check passes.
-  // The security rules provide the ultimate enforcement if this is bypassed.
+  // These queries will only ever execute if authorization is confirmed.
   const leavesQuery = useMemoFirebase(() => {
     if (!isAuthorized) return null;
     return query(
@@ -61,7 +59,7 @@ export default function AdminDashboardPage() {
 
   const studentsQuery = useMemoFirebase(() => {
     if (!isAuthorized) return null;
-    return collection(db, 'userProfiles');
+    return query(collection(db, 'userProfiles'), limit(100));
   }, [db, isAuthorized]);
 
   const { data: leaves, isLoading: isLeavesLoading } = useCollection<LeaveRequest>(leavesQuery);
@@ -93,17 +91,17 @@ export default function AdminDashboardPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold font-headline">Access Denied</h2>
           <p className="text-muted-foreground max-w-md">
-            This area is restricted to system administrators. If you believe this is an error, please contact IT support.
+            This area is restricted to system administrators. If you believe this is an error, please ensure you are logged into an admin account.
           </p>
         </div>
         <Button asChild variant="outline">
-          <Link href="/dashboard">Return to Dashboard</Link>
+          <Link href="/dashboard">Return to Overview</Link>
         </Button>
       </div>
     );
   }
 
-  const pendingCount = leaves?.filter(l => l.status === 'pending')?.length || 0;
+  const pendingCount = (leaves || []).filter(l => l.status === 'pending').length;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -123,7 +121,7 @@ export default function AdminDashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isStudentsLoading ? '...' : students?.length || 0}</div>
+            <div className="text-2xl font-bold">{isStudentsLoading ? '...' : (students || []).length}</div>
             <p className="text-xs text-muted-foreground">Registered in system</p>
           </CardContent>
         </Card>
@@ -144,7 +142,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">99.9%</div>
-            <p className="text-xs text-muted-foreground">AI response time &lt; 2s</p>
+            <p className="text-xs text-muted-foreground">Real-time sync active</p>
           </CardContent>
         </Card>
       </div>
@@ -197,8 +195,8 @@ export default function AdminDashboardPage() {
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                     </TableCell>
                   </TableRow>
-                ) : leaves && leaves.length > 0 ? (
-                  leaves.slice(0, 5).map((req) => (
+                ) : (leaves || []).length > 0 ? (
+                  leaves!.slice(0, 5).map((req) => (
                     <TableRow key={req.id}>
                       <TableCell className="font-medium">{req.type}</TableCell>
                       <TableCell className="text-xs">{req.startDate} to {req.endDate}</TableCell>
