@@ -42,10 +42,18 @@ export default function AdminDashboardPage() {
     return doc(db, 'userProfiles', user.uid);
   }, [db, user]);
 
+  // Check roles_admin existence to align with security rules
+  const adminRoleRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(db, 'roles_admin', user.uid);
+  }, [db, user]);
+
   const { data: profile, isLoading: isProfileLoading } = useDoc(userProfileRef);
+  const { data: adminRoleDoc, isLoading: isAdminRoleLoading } = useDoc(adminRoleRef);
   
   // Explicitly check for admin role. If profile is loading or role is not admin, this is false.
-  const isAuthorized = profile?.role === 'admin';
+  // We also verify the roles_admin existence for production consistency.
+  const isAuthorized = profile?.role === 'admin' || !!adminRoleDoc;
 
   // These queries will only ever execute if authorization is strictly confirmed.
   const leavesQuery = useMemoFirebase(() => {
@@ -74,7 +82,7 @@ export default function AdminDashboardPage() {
     });
   };
 
-  if (isProfileLoading) {
+  if (isProfileLoading || isAdminRoleLoading) {
     return (
       <div className="flex items-center justify-center h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
