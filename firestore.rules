@@ -19,11 +19,11 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Simplified admin check to avoid recursion in rules.
+    // Relies on a dedicated 'roles_admin' collection for authorization independence.
     function isAdmin() {
-      // Robust admin check: existence in roles_admin OR verified role in userProfiles
       return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid)) ||
-        get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'admin'
+        exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))
       );
     }
 
@@ -34,6 +34,7 @@ service cloud.firestore {
     // --- Collection Rules ---
 
     match /userProfiles/{userId} {
+      // Users can always read their own profile. Admins can read all.
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
       allow create: if isOwner(userId) && request.resource.data.id == userId;

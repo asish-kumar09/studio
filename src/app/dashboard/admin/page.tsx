@@ -44,10 +44,10 @@ export default function AdminDashboardPage() {
 
   const { data: profile, isLoading: isProfileLoading } = useDoc(userProfileRef);
   
-  // Strict authorization guard: only true if profile exists and role is explicitly admin
-  const isAuthorized = profile && profile.role === 'admin';
+  // Explicitly check for admin role. If profile is loading or role is not admin, this is false.
+  const isAuthorized = profile?.role === 'admin';
 
-  // These queries will only ever execute if authorization is confirmed.
+  // These queries will only ever execute if authorization is strictly confirmed.
   const leavesQuery = useMemoFirebase(() => {
     if (!isAuthorized) return null;
     return query(
