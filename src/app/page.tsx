@@ -6,7 +6,8 @@ import { PlaceHolderImages } from '@/app/lib/placeholder-images';
 import { Layout, MessageSquare, FileText, Calendar, CheckCircle, Rocket, Globe, Shield } from 'lucide-react';
 
 export default function Home() {
-  const heroImage = PlaceHolderImages.find(img => img.id === 'hero-student');
+  // Safe find to prevent crashes if array is empty or initialization is pending
+  const heroImage = PlaceHolderImages?.find(img => img.id === 'hero-student');
 
   return (
     <div className="flex flex-col min-h-screen bg-white">

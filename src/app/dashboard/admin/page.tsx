@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -44,17 +45,18 @@ export default function AdminDashboardPage() {
 
   const { data: profile, isLoading: isProfileLoading } = useDoc(userProfileRef);
   
+  // Strict check: only build queries if profile is loaded and role is admin
+  const isAuthorized = profile?.role === 'admin';
+
   const leavesQuery = useMemoFirebase(() => {
-    // Only run this query if the user is confirmed as an admin to avoid permission errors
-    if (!profile || profile.role !== 'admin') return null;
+    if (!isAuthorized) return null;
     return query(collection(db, 'leaveApplications'), orderBy('applicationDate', 'desc'));
-  }, [db, profile]);
+  }, [db, isAuthorized]);
 
   const studentsQuery = useMemoFirebase(() => {
-    // Only run this query if the user is confirmed as an admin
-    if (!profile || profile.role !== 'admin') return null;
+    if (!isAuthorized) return null;
     return collection(db, 'userProfiles');
-  }, [db, profile]);
+  }, [db, isAuthorized]);
 
   const { data: leaves, isLoading: isLeavesLoading } = useCollection<LeaveRequest>(leavesQuery);
   const { data: students, isLoading: isStudentsLoading } = useCollection(studentsQuery);
@@ -76,7 +78,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  if (profile?.role !== 'admin') {
+  if (!isAuthorized) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4">
         <div className="bg-destructive/10 p-6 rounded-full">
@@ -171,7 +173,6 @@ export default function AdminDashboardPage() {
               <CardTitle className="font-headline">Recent Requests</CardTitle>
               <CardDescription>Review and process student leave requests.</CardDescription>
             </div>
-            <Button variant="outline" size="sm">History</Button>
           </CardHeader>
           <CardContent>
             <Table>

@@ -2,19 +2,16 @@
 'use server';
 /**
  * @fileOverview This file implements a Genkit flow for an AI chatbot that assists students.
- * It uses tool-calling to fetch real-time student data (like leave status).
- *
- * - studentChatbotAssistance - A function that handles student queries and provides helpful answers.
- * - StudentChatbotAssistanceInput - The input type for the studentChatbotAssistance function.
- * - StudentChatbotAssistanceOutput - The return type for the studentChatbotAssistance function.
+ * It uses firebase-admin for efficient server-side database access within Genkit tools.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Initialize Firebase Admin for server-side database access within Genkit tools
+// Initialize Firebase Admin for server-side database access
+// Use default configuration provided by Firebase App Hosting environment
 const adminApp = getApps().length === 0 ? initializeApp() : getApps()[0];
 const adminDb = getFirestore(adminApp);
 
@@ -35,6 +32,7 @@ export type StudentChatbotAssistanceOutput = z.infer<typeof StudentChatbotAssist
 
 /**
  * Tool to fetch a student's leave applications.
+ * Uses adminDb to bypass security rules since it's a server-side verified request.
  */
 const getStudentLeaveHistory = ai.defineTool(
   {
@@ -46,14 +44,19 @@ const getStudentLeaveHistory = ai.defineTool(
     outputSchema: z.array(z.any()),
   },
   async (input) => {
-    const snapshot = await adminDb
-      .collection('leaveApplications')
-      .where('studentId', '==', input.studentId)
-      .orderBy('applicationDate', 'desc')
-      .limit(5)
-      .get();
-    
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    try {
+      const snapshot = await adminDb
+        .collection('leaveApplications')
+        .where('studentId', '==', input.studentId)
+        .orderBy('applicationDate', 'desc')
+        .limit(5)
+        .get();
+      
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error in getStudentLeaveHistory tool:', error);
+      return [];
+    }
   }
 );
 
