@@ -51,27 +51,32 @@ export default function AdminDashboardPage() {
   // This prevents triggering unauthorized queries if the user is a student.
   const isAuthorized = !!adminRoleDoc;
 
-  // These queries will only ever execute if authorization is strictly confirmed via roles_admin.
+  // These queries will only ever execute if authorization is strictly confirmed via roles_admin
+  // and the initial loading check has completed.
   const leavesQuery = useMemoFirebase(() => {
-    if (!isAuthorized) return null;
+    if (!isAuthorized || isAdminRoleLoading) return null;
     return query(
       collection(db, 'leaveApplications'), 
       orderBy('applicationDate', 'desc'),
       limit(50)
     );
-  }, [db, isAuthorized]);
+  }, [db, isAuthorized, isAdminRoleLoading]);
 
   const studentsQuery = useMemoFirebase(() => {
-    if (!isAuthorized) return null;
+    if (!isAuthorized || isAdminRoleLoading) return null;
     return query(collection(db, 'userProfiles'), limit(100));
-  }, [db, isAuthorized]);
+  }, [db, isAuthorized, isAdminRoleLoading]);
 
   const { data: leaves, isLoading: isLeavesLoading } = useCollection<LeaveRequest>(leavesQuery);
   const { data: students, isLoading: isStudentsLoading } = useCollection(studentsQuery);
 
   const handleStatusUpdate = (leaveId: string, status: 'approved' | 'rejected') => {
     const leaveRef = doc(db, 'leaveApplications', leaveId);
-    updateDocumentNonBlocking(leaveRef, { status });
+    updateDocumentNonBlocking(leaveRef, { 
+      status,
+      reviewDate: new Date().toISOString(),
+      reviewedByAdminId: user?.uid 
+    });
     toast({
       title: `Request ${status.charAt(0).toUpperCase() + status.slice(1)}`,
       description: `Leave request has been updated to ${status}.`,

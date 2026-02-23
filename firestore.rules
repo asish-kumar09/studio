@@ -73,10 +73,10 @@ service cloud.firestore {
     }
 
     match /roles_admin/{adminUid} {
-      // Only existing admins can manage roles, but any signed-in user can check their own.
+      // Any signed-in user can check if they are an admin.
+      // Management of the roles collection is restricted to existing admins.
       allow get: if isSignedIn();
-      allow list: if isAdmin();
-      allow write: if isAdmin();
+      allow list, write: if isAdmin();
     }
 
     match /leaveApplications/{leaveApplicationId} {
@@ -84,6 +84,7 @@ service cloud.firestore {
       allow get: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid);
       
       // Enforce QAP: Students MUST filter by their studentId. Admins can list all.
+      // This prevents unauthorized global collection scans.
       allow list: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.studentId);
       
       allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
