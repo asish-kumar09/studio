@@ -1,4 +1,3 @@
-
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,11 +45,19 @@ export default function AdminDashboardPage() {
   const { data: profile, isLoading: isProfileLoading } = useDoc(userProfileRef);
   
   const leavesQuery = useMemoFirebase(() => {
+    // Only run this query if the user is confirmed as an admin to avoid permission errors
+    if (!profile || profile.role !== 'admin') return null;
     return query(collection(db, 'leaveApplications'), orderBy('applicationDate', 'desc'));
-  }, [db]);
+  }, [db, profile]);
+
+  const studentsQuery = useMemoFirebase(() => {
+    // Only run this query if the user is confirmed as an admin
+    if (!profile || profile.role !== 'admin') return null;
+    return collection(db, 'userProfiles');
+  }, [db, profile]);
 
   const { data: leaves, isLoading: isLeavesLoading } = useCollection<LeaveRequest>(leavesQuery);
-  const { data: students, isLoading: isStudentsLoading } = useCollection(collection(db, 'userProfiles'));
+  const { data: students, isLoading: isStudentsLoading } = useCollection(studentsQuery);
 
   const handleStatusUpdate = (leaveId: string, status: 'approved' | 'rejected') => {
     const leaveRef = doc(db, 'leaveApplications', leaveId);
