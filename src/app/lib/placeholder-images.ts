@@ -8,7 +8,11 @@ export interface ImagePlaceholder {
   imageHint: string;
 }
 
-// Robust export to prevent "undefined" errors
-export const PlaceHolderImages: ImagePlaceholder[] = Array.isArray(data?.placeholderImages) 
-  ? data.placeholderImages 
-  : [];
+/**
+ * Standardized utility for placeholder images.
+ * Ensures data is always an array and prevents hydration/null-pointer errors.
+ */
+export const PlaceHolderImages: ImagePlaceholder[] = 
+  data && Array.isArray((data as any).placeholderImages) 
+    ? (data as any).placeholderImages 
+    : [];

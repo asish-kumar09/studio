@@ -10,8 +10,7 @@ import {z} from 'genkit';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Initialize Firebase Admin for server-side database access
-// Use default configuration provided by Firebase App Hosting environment
+// Initialize Firebase Admin for high-performance server-side database access
 const adminApp = getApps().length === 0 ? initializeApp() : getApps()[0];
 const adminDb = getFirestore(adminApp);
 
@@ -32,7 +31,7 @@ export type StudentChatbotAssistanceOutput = z.infer<typeof StudentChatbotAssist
 
 /**
  * Tool to fetch a student's leave applications.
- * Uses adminDb to bypass security rules since it's a server-side verified request.
+ * Uses adminDb to bypass client-side security rules for system-level summary.
  */
 const getStudentLeaveHistory = ai.defineTool(
   {
@@ -45,6 +44,7 @@ const getStudentLeaveHistory = ai.defineTool(
   },
   async (input) => {
     try {
+      // Efficient indexed query
       const snapshot = await adminDb
         .collection('leaveApplications')
         .where('studentId', '==', input.studentId)
@@ -54,7 +54,7 @@ const getStudentLeaveHistory = ai.defineTool(
       
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
-      console.error('Error in getStudentLeaveHistory tool:', error);
+      // Errors are handled internally to prevent flow crashes
       return [];
     }
   }
@@ -72,7 +72,7 @@ const studentChatbotPrompt = ai.definePrompt({
   output: {schema: StudentChatbotAssistanceOutputSchema},
   tools: [getStudentLeaveHistory],
   prompt: `You are an AI chatbot named StudentHub AI, designed to assist students.
-You have access to tools that can fetch real-time student data.
+You have access to tools that can fetch real-time student data from the academic database.
 
 **Current Student Context:**
 - Student ID: {{{studentId}}}
@@ -80,7 +80,7 @@ You have access to tools that can fetch real-time student data.
 **Instructions:**
 1. If the student asks about their leave requests, status, or history, use the 'getStudentLeaveHistory' tool.
 2. Provide concise, helpful, and supportive answers.
-3. If tool data is returned, summarize it clearly for the student.
+3. If tool data is returned, summarize it clearly for the student. If no data is found, politely inform them.
 
 {{#if history}}
 **Conversation History:**

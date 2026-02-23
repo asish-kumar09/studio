@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from "recharts"
 import { ShieldAlert, Users, Calendar, CheckCircle, XCircle, Loader2, AlertTriangle } from "lucide-react"
 import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase"
-import { collection, query, orderBy, doc } from "firebase/firestore"
+import { collection, query, orderBy, doc, limit } from "firebase/firestore"
 import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
@@ -45,12 +45,18 @@ export default function AdminDashboardPage() {
 
   const { data: profile, isLoading: isProfileLoading } = useDoc(userProfileRef);
   
-  // Strict check: only build queries if profile is loaded and role is admin
-  const isAuthorized = profile?.role === 'admin';
+  // Strict authorization guard: only true if profile exists and role is admin
+  const isAuthorized = profile && profile.role === 'admin';
 
+  // These queries will only ever be non-null if the client-side check passes.
+  // The security rules provide the ultimate enforcement if this is bypassed.
   const leavesQuery = useMemoFirebase(() => {
     if (!isAuthorized) return null;
-    return query(collection(db, 'leaveApplications'), orderBy('applicationDate', 'desc'));
+    return query(
+      collection(db, 'leaveApplications'), 
+      orderBy('applicationDate', 'desc'),
+      limit(50)
+    );
   }, [db, isAuthorized]);
 
   const studentsQuery = useMemoFirebase(() => {
@@ -87,7 +93,7 @@ export default function AdminDashboardPage() {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold font-headline">Access Denied</h2>
           <p className="text-muted-foreground max-w-md">
-            You do not have the necessary permissions to access the Admin Portal. This area is restricted to system administrators only.
+            This area is restricted to system administrators. If you believe this is an error, please contact IT support.
           </p>
         </div>
         <Button asChild variant="outline">

@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -7,8 +8,7 @@ service cloud.firestore {
      * 
      * Core Philosophy: 
      * This ruleset enforces a strict user-ownership model combined with role-based access for administrators. 
-     * High performance is achieved through path-based authorization and denormalized ownership fields, 
-     * ensuring that security checks are atomic and do not require excessive 'get' calls.
+     * High performance is achieved through path-based authorization and denormalized ownership fields.
      */
 
     // --- Helper Functions ---
@@ -22,11 +22,8 @@ service cloud.firestore {
     }
 
     function isAdmin() {
+      // Efficiently check for admin existence in roles_admin collection
       return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-    }
-
-    function isExistingDocumentOwner(ownerField) {
-      return isSignedIn() && resource != null && resource.data[ownerField] == request.auth.uid;
     }
 
     function isUnchanged(field) {
@@ -80,16 +77,17 @@ service cloud.firestore {
     }
 
     match /leaveApplications/{leaveApplicationId} {
-      allow get: if isAdmin() || isExistingDocumentOwner('studentId');
+      // Allow read if user is admin or the student who owns the request
+      allow get: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid);
       
-      // Enforce QAP: Students can only list their own by using where('studentId', '==', auth.uid)
-      allow list: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid);
+      // Enforce QAP: Non-admins MUST filter by studentId
+      allow list: if isAdmin() || (isSignedIn() && request.query.limit <= 100 && resource.data.studentId == request.auth.uid);
       
       allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
       
-      allow update: if isAdmin() || (isExistingDocumentOwner('studentId') && resource.data.status == 'pending' && isUnchanged('studentId'));
+      allow update: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid && resource.data.status == 'pending' && isUnchanged('studentId'));
       
-      allow delete: if isAdmin() || (isExistingDocumentOwner('studentId') && resource.data.status == 'pending');
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.studentId == request.auth.uid && resource.data.status == 'pending');
     }
 
     match /skills/{skillId} {
